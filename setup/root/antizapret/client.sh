@@ -92,15 +92,15 @@ addVLESSReality(){
         VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{VLESS_SHORT_ID\}/$VLESS_SHORT_ID}
         VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//"/ Placeholder for additional IPs from route-ips.txt\n          // "\n          ${ROUTE_IPS_JSON}}
 
-        mkdir -p "/root/antizapret/client/xray/vless-reality"
-        echo "$VLESS_CLIENT_CONFIG" > "/root/antizapret/client/xray/vless-reality/${CLIENT_NAME}.json"
+        mkdir -p "/root/antizapret/client/${CLIENT_NAME}"
+        echo "$VLESS_CLIENT_CONFIG" > "/root/antizapret/client/${CLIENT_NAME}/${CLIENT_NAME}.json"
 
-        echo "VLESS Reality profile created for client '$CLIENT_NAME' at /root/antizapret/client/xray/vless-reality/${CLIENT_NAME}.json"
+        echo "VLESS Reality profile created for client '$CLIENT_NAME' at /root/antizapret/client/${CLIENT_NAME}/${CLIENT_NAME}.json"
 }
 
 deleteVLESSReality(){
         echo
-        rm -f "/root/antizapret/client/xray/vless-reality/${CLIENT_NAME}.json"
+        rm -rf "/root/antizapret/client/${CLIENT_NAME}"
         echo "VLESS Reality client '$CLIENT_NAME' successfully deleted"
 }
 
@@ -108,7 +108,7 @@ listVLESSReality(){
         [[ -n "$CLIENT_NAME" ]] && return
         echo
         echo 'VLESS Reality client names:'
-        ls /root/antizapret/client/xray/vless-reality/ | sed 's/\.json$//' | sort
+        find /root/antizapret/client/ -maxdepth 2 -type f -name '*.json' | xargs -n 1 basename | sed 's/\.json$//' | sort
 }
 
 initOpenVPN(){
@@ -187,14 +187,16 @@ addOpenVPN(){
                 exit 3
         fi
 
-        render "/etc/openvpn/client/templates/antizapret-udp.conf" > "/root/antizapret/client/openvpn/antizapret-udp/antizapret-$FILE_NAME-udp.ovpn"
-        render "/etc/openvpn/client/templates/antizapret-tcp.conf" > "/root/antizapret/client/openvpn/antizapret-tcp/antizapret-$FILE_NAME-tcp.ovpn"
-        render "/etc/openvpn/client/templates/antizapret.conf" > "/root/antizapret/client/openvpn/antizapret/antizapret-$FILE_NAME.ovpn"
-        render "/etc/openvpn/client/templates/vpn-udp.conf" > "/root/antizapret/client/openvpn/vpn-udp/vpn-$FILE_NAME-udp.ovpn"
-        render "/etc/openvpn/client/templates/vpn-tcp.conf" > "/root/antizapret/client/openvpn/vpn-tcp/vpn-$FILE_NAME-tcp.ovpn"
-        render "/etc/openvpn/client/templates/vpn.conf" > "/root/antizapret/client/openvpn/vpn/vpn-$FILE_NAME.ovpn"
+        mkdir -p "/root/antizapret/client/${CLIENT_NAME}"
+        DATE=$(date +'%y-%m-%d')
+        render "/etc/openvpn/client/templates/antizapret-udp.conf" > "/root/antizapret/client/${CLIENT_NAME}/AZ-UDP-${DATE}.ovpn"
+        render "/etc/openvpn/client/templates/antizapret-tcp.conf" > "/root/antizapret/client/${CLIENT_NAME}/AZ-TCP-${DATE}.ovpn"
+        render "/etc/openvpn/client/templates/antizapret.conf" > "/root/antizapret/client/${CLIENT_NAME}/AZ-U+T-${DATE}.ovpn"
+        render "/etc/openvpn/client/templates/vpn-udp.conf" > "/root/antizapret/client/${CLIENT_NAME}/GL-UDP-${DATE}.ovpn"
+        render "/etc/openvpn/client/templates/vpn-tcp.conf" > "/root/antizapret/client/${CLIENT_NAME}/GL-TCP-${DATE}.ovpn"
+        render "/etc/openvpn/client/templates/vpn.conf" > "/root/antizapret/client/${CLIENT_NAME}/GL-U+T-${DATE}.ovpn"
 
-        echo "OpenVPN profile files (re)created for client '$CLIENT_NAME' at /root/antizapret/client/openvpn"
+        echo "OpenVPN profile files (re)created for client '$CLIENT_NAME' at /root/antizapret/client/${CLIENT_NAME}"
 }
 
 deleteOpenVPN(){
@@ -207,12 +209,7 @@ deleteOpenVPN(){
         chmod 644 ./pki/crl.pem
         cp ./pki/crl.pem /etc/openvpn/server/keys/crl.pem
 
-        rm -f /root/antizapret/client/openvpn/antizapret/antizapret-$FILE_NAME.ovpn
-        rm -f /root/antizapret/client/openvpn/antizapret-udp/antizapret-$FILE_NAME-udp.ovpn
-        rm -f /root/antizapret/client/openvpn/antizapret-tcp/antizapret-$FILE_NAME-tcp.ovpn
-        rm -f /root/antizapret/client/openvpn/vpn/vpn-$FILE_NAME.ovpn
-        rm -f /root/antizapret/client/openvpn/vpn-udp/vpn-$FILE_NAME-udp.ovpn
-        rm -f /root/antizapret/client/openvpn/vpn-tcp/vpn-$FILE_NAME-tcp.ovpn
+        rm -rf "/root/antizapret/client/${CLIENT_NAME}"
         rm -f /etc/openvpn/client/keys/$CLIENT_NAME.crt
         rm -f /etc/openvpn/client/keys/$CLIENT_NAME.key
 
@@ -282,9 +279,9 @@ AllowedIPs = ${CLIENT_IP}/32
                         wg syncconf antizapret <(wg-quick strip antizapret 2>/dev/null)
                 fi
         fi
-
-        render "/etc/wireguard/templates/antizapret-client-wg.conf" > "/root/antizapret/client/wireguard/antizapret/antizapret-$FILE_NAME-wg.conf"
-        render "/etc/wireguard/templates/antizapret-client-am.conf" > "/root/antizapret/client/amneziawg/antizapret/antizapret-$FILE_NAME-am.conf"
+        DATE=$(date +'%y-%m-%d')
+        render "/etc/wireguard/templates/antizapret-client-wg.conf" > "/root/antizapret/client/${CLIENT_NAME}/AZ-WG-${DATE}.conf"
+        render "/etc/wireguard/templates/antizapret-client-am.conf" > "/root/antizapret/client/${CLIENT_NAME}/AZ-AM-${DATE}.conf"
 
         # VPN
 
@@ -321,11 +318,11 @@ AllowedIPs = ${CLIENT_IP}/32
                         wg syncconf vpn <(wg-quick strip vpn 2>/dev/null)
                 fi
         fi
+        DATE=$(date +'%y-%m-%d')
+        render "/etc/wireguard/templates/vpn-client-wg.conf" > "/root/antizapret/client/${CLIENT_NAME}/GL-WG-${DATE}.conf"
+        render "/etc/wireguard/templates/vpn-client-am.conf" > "/root/antizapret/client/${CLIENT_NAME}/GL-AM-${DATE}.conf"
 
-        render "/etc/wireguard/templates/vpn-client-wg.conf" > "/root/antizapret/client/wireguard/vpn/vpn-$FILE_NAME-wg.conf"
-        render "/etc/wireguard/templates/vpn-client-am.conf" > "/root/antizapret/client/amneziawg/vpn/vpn-$FILE_NAME-am.conf"
-
-        echo "WireGuard/AmneziaWG profile files (re)created for client '$CLIENT_NAME' at /root/antizapret/client/wireguard and /root/antizapret/client/amneziawg"
+        echo "WireGuard/AmneziaWG profile files (re)created for client '$CLIENT_NAME' at /root/antizapret/client/${CLIENT_NAME}"
         echo
         echo 'Attention! If import fails, shorten profile filename to 32 chars (Windows) or 15 (Linux/Android/iOS), remove parentheses'
 }
@@ -345,8 +342,7 @@ deleteWireGuard(){
         sed -i '/^$/N;/^\n$/D' /etc/wireguard/antizapret.conf
         sed -i '/^$/N;/^\n$/D' /etc/wireguard/vpn.conf
 
-        rm -f /root/antizapret/client/{wireguard,amneziawg}/antizapret/antizapret-$FILE_NAME-*.conf
-        rm -f /root/antizapret/client/{wireguard,amneziawg}/vpn/vpn-$FILE_NAME-*.conf
+        rm -rf "/root/antizapret/client/${CLIENT_NAME}"
 
         if systemctl is-active --quiet wg-quick@antizapret; then
                 wg syncconf antizapret <(wg-quick strip antizapret 2>/dev/null)
@@ -410,7 +406,7 @@ recreate(){
 
         # VLESS Reality
         if [[ -f /usr/local/etc/xray/config.json ]]; then
-                ls /root/antizapret/client/xray/vless-reality/ | sed 's/\.json$//' | sort | while read -r CLIENT_NAME; do
+                find /root/antizapret/client/ -maxdepth 2 -type f -name '*.json' | xargs -n 1 basename | sed 's/\.json$//' | sort | while read -r CLIENT_NAME; do
                         if [[ "$CLIENT_NAME" =~ ^[a-zA-Z0-9_-]{1,32}$ ]]; then
                                 addVLESSReality >/dev/null
                                 echo "VLESS Reality profile files recreated for client '$CLIENT_NAME'"
