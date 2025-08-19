@@ -81,7 +81,7 @@ TELEGRAM_IPS_PATH="download/telegram-ips.txt"
 GOOGLE_IPS_LINK="https://raw.githubusercontent.com/GubernievS/AntiZapret-VPN/main/setup/root/antizapret/download/google-ips.txt"
 GOOGLE_IPS_PATH="download/google-ips.txt"
 
-AKAMAI_IPS_LINK="https://raw.githubusercontent.com/GubernievS/AntiZapret-VPN/main/setup/root/antizapret/download/akamai-ips.txt"
+AKAMAI_IPS_LINK="https://raw.githubusercontent.com/QuasyStellar/AntiZapret-VPN/main/setup/root/antizapret/download/akamai-ips.txt"
 AKAMAI_IPS_PATH="download/akamai-ips.txt"
 
 function download {

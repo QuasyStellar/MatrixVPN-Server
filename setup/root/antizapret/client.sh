@@ -69,13 +69,56 @@ render() {
 	done < "$1"
 }
 
+addVLESSReality(){
+	setServerHost_FileName "" # Use empty string to get SERVER_IP
+	echo
+
+	source /root/antizapret/setup
+
+	# Get route-ips for client routing rules
+	ROUTE_IPS_ARRAY=()
+	while IFS= read -r line; do
+		ROUTE_IPS_ARRAY+=(""$line"")
+	done < /root/antizapret/result/route-ips.txt
+	ROUTE_IPS_JSON=$(IFS=,; echo "${ROUTE_IPS_ARRAY[*]}")
+
+	# Read template and populate
+	VLESS_CLIENT_CONFIG=$(cat "/etc/xray/client/templates/vless-reality.json")
+	VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{SERVER_EXTERNAL_IP_OR_DOMAIN\}/$SERVER_IP}
+	VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{VLESS_PORT\}/$VLESS_PORT}
+	VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{VLESS_UUID\}/$VLESS_UUID}
+	VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{VLESS_SERVER_NAME\}/$(echo "$VLESS_SERVER_NAMES" | cut -d',' -f1)} # Use first server name
+	VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{VLESS_PUBLIC_KEY\}/$VLESS_PUBLIC_KEY}
+	VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{VLESS_SHORT_ID\}/$VLESS_SHORT_ID}
+	VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//"/ Placeholder for additional IPs from route-ips.txt\n          // "\n          ${ROUTE_IPS_JSON}}
+
+	mkdir -p "/root/antizapret/client/xray/vless-reality"
+	echo "$VLESS_CLIENT_CONFIG" > "/root/antizapret/client/xray/vless-reality/${CLIENT_NAME}.json"
+
+	echo "VLESS Reality profile created for client '$CLIENT_NAME' at /root/antizapret/client/xray/vless-reality/${CLIENT_NAME}.json"
+}
+
+deleteVLESSReality(){
+	echo
+	rm -f "/root/antizapret/client/xray/vless-reality/${CLIENT_NAME}.json"
+	echo "VLESS Reality client '$CLIENT_NAME' successfully deleted"
+}
+
+listVLESSReality(){
+	[[ -n "$CLIENT_NAME" ]] && return
+	echo
+	echo 'VLESS Reality client names:'
+	ls /root/antizapret/client/xray/vless-reality/ | sed 's/\.json$//' | sort
+}
+
 initOpenVPN(){
 	mkdir -p /etc/openvpn/easyrsa3
 	cd /etc/openvpn/easyrsa3
 
 	if [[ ! -f ./pki/ca.crt ]] || \
 	   [[ ! -f ./pki/issued/antizapret-server.crt ]] || \
-	   [[ ! -f ./pki/private/antizapret-server.key ]]; then
+	   [[ ! -f ./pki/private/antizapret-server.key ]]
+	then
 		rm -rf ./pki
 		rm -rf /etc/openvpn/server/keys
 		rm -rf /etc/openvpn/client/keys
@@ -89,13 +132,15 @@ initOpenVPN(){
 
 	if [[ ! -f /etc/openvpn/server/keys/ca.crt ]] || \
 	   [[ ! -f /etc/openvpn/server/keys/antizapret-server.crt ]] || \
-	   [[ ! -f /etc/openvpn/server/keys/antizapret-server.key ]]; then
+	   [[ ! -f /etc/openvpn/server/keys/antizapret-server.key ]]
+	then
 		cp ./pki/ca.crt /etc/openvpn/server/keys/ca.crt
 		cp ./pki/issued/antizapret-server.crt /etc/openvpn/server/keys/antizapret-server.crt
 		cp ./pki/private/antizapret-server.key /etc/openvpn/server/keys/antizapret-server.key
 	fi
 
-	if [[ ! -f /etc/openvpn/server/keys/crl.pem ]]; then
+	if [[ ! -f /etc/openvpn/server/keys/crl.pem ]]
+	then
 		EASYRSA_CRL_DAYS=3650 /usr/share/easy-rsa/easyrsa gen-crl
 		chmod 644 ./pki/crl.pem
 		cp ./pki/crl.pem /etc/openvpn/server/keys/crl.pem
@@ -362,6 +407,22 @@ recreate(){
 		initWireGuard
 		addWireGuard >/dev/null
 	fi
+
+	# VLESS Reality
+	if [[ -f /etc/xray/config.json ]]; then
+		ls /root/antizapret/client/xray/vless-reality/ | sed 's/\.json$//' | sort | while read -r CLIENT_NAME; do
+			if [[ "$CLIENT_NAME" =~ ^[a-zA-Z0-9_-]{1,32}$ ]]; then
+				addVLESSReality >/dev/null
+				echo "VLESS Reality profile files recreated for client '$CLIENT_NAME'"
+			else
+				echo "VLESS Reality client name '$CLIENT_NAME' is invalid! No profile files recreated"
+			fi
+		done
+	else
+		CLIENT_NAME="antizapret-client"
+		echo "Creating first VLESS Reality client: '$CLIENT_NAME'"
+		addVLESSReality >/dev/null
+	fi
 }
 
 backup(){
@@ -393,7 +454,7 @@ OPTION=$1
 CLIENT_NAME=$2
 CLIENT_CERT_EXPIRE=$3
 
-if ! [[ "$OPTION" =~ ^[1-8]$ ]]; then
+if ! [[ "$OPTION" =~ ^[1-11]$ ]]; then
 	echo
 	echo 'Please choose option:'
 	echo '    1) OpenVPN - Add client/Renew client certificate'
@@ -404,8 +465,11 @@ if ! [[ "$OPTION" =~ ^[1-8]$ ]]; then
 	echo '    6) WireGuard/AmneziaWG - List clients'
 	echo '    7) Recreate client profile files'
 	echo '    8) Backup configuration and clients'
-	until [[ "$OPTION" =~ ^[1-8]$ ]]; do
-		read -rp 'Option choice [1-8]: ' -e OPTION
+	echo '    9) VLESS Reality - Add client'
+	echo '    10) VLESS Reality - Delete client'
+	echo '    11) VLESS Reality - List clients'
+	until [[ "$OPTION" =~ ^[1-11]$ ]]; do
+		read -rp 'Option choice [1-11]: ' -e OPTION
 	done
 fi
 
@@ -449,5 +513,20 @@ case "$OPTION" in
 	8)
 		echo 'Backup configuration and clients'
 		backup
+		;;
+	9)
+		echo "VLESS Reality - Add client $CLIENT_NAME"
+		askClientName
+		addVLESSReality
+		;;
+	10)
+		echo "VLESS Reality - Delete client $CLIENT_NAME"
+		listVLESSReality
+		askClientName
+		deleteVLESSReality
+		;;
+	11)
+		echo "VLESS Reality - List clients"
+		listVLESSReality
 		;;
 esac

@@ -1,0 +1,87 @@
+{
+  "inbounds": [
+    {
+      "listen": "127.0.0.1",
+      "port": 10808,
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": true,
+        "ip": "127.0.0.1"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "proxy",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "${SERVER_EXTERNAL_IP_OR_DOMAIN}",
+            "port": ${VLESS_PORT},
+            "users": [
+              {
+                "id": "${VLESS_UUID}",
+                "encryption": "none",
+                "flow": "xtls-rprx-vision"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "fingerprint": "chrome",
+          "serverName": "${VLESS_SERVER_NAME}",
+          "publicKey": "${VLESS_PUBLIC_KEY}",
+          "shortId": "${VLESS_SHORT_ID}"
+        }
+      }
+    },
+    {
+      "tag": "direct",
+      "protocol": "freedom",
+      "settings": {}
+    }
+  ],
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "ip": [
+          "10.30.0.0/15"
+          // Placeholder for additional IPs from route-ips.txt
+          // "${ROUTE_IPS}"
+        ],
+        "outboundTag": "proxy"
+      },
+      {
+        "type": "field",
+        "domain": [
+          "geosite:cn",
+          "geosite:private"
+        ],
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "network": "udp",
+        "outboundTag": "direct"
+      },
+      {
+        "type": "field",
+        "network": "tcp",
+        "outboundTag": "proxy"
+      }
+    ]
+  },
+  "dns": {
+    "servers": [
+      "10.29.0.1"
+    ]
+  }
+}

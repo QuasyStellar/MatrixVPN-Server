@@ -58,6 +58,21 @@ echo 'More details: https://github.com/GubernievS/AntiZapret-VPN'
 #
 # Спрашиваем о настройках
 echo
+echo 'VLESS Reality XTLS will be installed.'
+until [[ "$VLESS_PORT" =~ ^[0-9]+$ ]] && [ "$VLESS_PORT" -ge 1 ] && [ "$VLESS_PORT" -le 65535 ]; do
+    read -rp 'Enter VLESS Reality port (e.g., 443, 8443): ' -e -i 443 VLESS_PORT
+done
+echo
+while read -rp 'Enter a legitimate website to mimic for VLESS Reality (e.g., www.apple.com:443): ' -e VLESS_DEST
+do
+    [[ -n "$VLESS_DEST" ]] && break
+done
+echo
+while read -rp 'Enter server names for VLESS Reality (comma-separated, e.g., www.apple.com,apple.com): ' -e VLESS_SERVER_NAMES
+do
+    [[ -n "$VLESS_SERVER_NAMES" ]] && break
+done
+
 echo 'Choose anti-censorship patch for OpenVPN (UDP only):'
 echo '    0) None        - Do not install anti-censorship patch, or remove if already installed'
 echo '    1) Strong      - Recommended by default'
@@ -112,12 +127,12 @@ until [[ "$ALTERNATIVE_IP" =~ (y|n) ]]; do
 	read -rp 'Use alternative range of IP addresses? [y/n]: ' -e -i n ALTERNATIVE_IP
 done
 echo
-until [[ "$OPENVPN_80_443_TCP" =~ (y|n) ]]; do
-	read -rp 'Use TCP ports 80 and 443 as backup for OpenVPN connections? [y/n]: ' -e -i y OPENVPN_80_443_TCP
+until [[ "$OPENVPN_80_TCP" =~ (y|n) ]]; do
+	read -rp 'Use TCP port 80 as backup for OpenVPN connections? [y/n]: ' -e -i y OPENVPN_80_TCP
 done
 echo
-until [[ "$OPENVPN_80_443_UDP" =~ (y|n) ]]; do
-	read -rp 'Use UDP ports 80 and 443 as backup for OpenVPN connections? [y/n]: ' -e -i y OPENVPN_80_443_UDP
+until [[ "$OPENVPN_80_UDP" =~ (y|n) ]]; do
+	read -rp 'Use UDP port 80 as backup for OpenVPN connections? [y/n]: ' -e -i y OPENVPN_80_UDP
 done
 echo
 until [[ "$OPENVPN_DUPLICATE" =~ (y|n) ]]; do
@@ -354,8 +369,63 @@ fi
 # Ставим необходимые пакеты
 apt-get update
 apt-get install --reinstall -y git openvpn iptables easy-rsa gawk knot-resolver idn sipcalc python3-pip wireguard diffutils socat lua-cqueues ipset irqbalance
+bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 apt-get autoremove -y
 apt-get clean
+
+echo
+echo 'Generating VLESS Reality keys...'
+XRAY_KEYS=$(/usr/local/bin/xray x25519)
+VLESS_PRIVATE_KEY=$(echo "$XRAY_KEYS" | grep 'Private key' | awk '{print $3}')
+VLESS_PUBLIC_KEY=$(echo "$XRAY_KEYS" | grep 'Public key' | awk '{print $3}')
+VLESS_SHORT_ID=$(echo "$XRAY_KEYS" | grep 'ShortId' | awk '{print $2}')
+VLESS_UUID=$(/usr/local/bin/xray uuid)
+
+mkdir -p /etc/xray/
+
+cat << EOF > /etc/xray/config.json
+{
+  "inbounds": [
+    {
+      "listen": "0.0.0.0",
+      "port": $VLESS_PORT,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "$VLESS_UUID",
+            "flow": "xtls-rprx-vision"
+          }
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "$VLESS_DEST",
+          "xver": 0,
+          "serverNames": [$(echo "$VLESS_SERVER_NAMES" | sed 's/,/","/g;s/^/"/;s/$/"/')],
+          "privateKey": "$VLESS_PRIVATE_KEY",
+          "minClientVer": "",
+          "maxClientVer": "",
+          "maxTimeDiff": 0,
+          "shortIds": [
+            "$VLESS_SHORT_ID"
+          ]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    }
+  ]
+}
+EOF
 
 #
 # Клонируем репозиторий и устанавливаем dnslib
@@ -366,7 +436,7 @@ PIP_BREAK_SYSTEM_PACKAGES=1 python3 -m pip install --force-reinstall --user /tmp
 #
 # Клонируем репозиторий antizapret
 rm -rf /tmp/antizapret
-git clone https://github.com/GubernievS/AntiZapret-VPN.git /tmp/antizapret
+git clone https://github.com/QuasyStellar/AntiZapret-VPN.git /tmp/antizapret
 
 #
 # Сохраняем пользовательские настройки и пользовательские обработчики custom*.sh
@@ -393,8 +463,8 @@ ANTIZAPRET_DNS=${ANTIZAPRET_DNS}
 VPN_DNS=${VPN_DNS}
 BLOCK_ADS=${BLOCK_ADS}
 ALTERNATIVE_IP=${ALTERNATIVE_IP}
-OPENVPN_80_443_TCP=${OPENVPN_80_443_TCP}
-OPENVPN_80_443_UDP=${OPENVPN_80_443_UDP}
+OPENVPN_80_TCP=${OPENVPN_80_TCP}
+OPENVPN_80_UDP=${OPENVPN_80_UDP}
 OPENVPN_DUPLICATE=${OPENVPN_DUPLICATE}
 OPENVPN_LOG=${OPENVPN_LOG}
 SSH_PROTECTION=${SSH_PROTECTION}
@@ -411,7 +481,14 @@ HETZNER_INCLUDE=${HETZNER_INCLUDE}
 DIGITALOCEAN_INCLUDE=${DIGITALOCEAN_INCLUDE}
 OVH_INCLUDE=${OVH_INCLUDE}
 GOOGLE_INCLUDE=${GOOGLE_INCLUDE}
-AKAMAI_INCLUDE=${AKAMAI_INCLUDE}" > /tmp/antizapret/setup/root/antizapret/setup
+AKAMAI_INCLUDE=${AKAMAI_INCLUDE}
+VLESS_PORT=${VLESS_PORT}
+VLESS_DEST=${VLESS_DEST}
+VLESS_SERVER_NAMES=${VLESS_SERVER_NAMES}
+VLESS_PRIVATE_KEY=${VLESS_PRIVATE_KEY}
+VLESS_PUBLIC_KEY=${VLESS_PUBLIC_KEY}
+VLESS_SHORT_ID=${VLESS_SHORT_ID}
+VLESS_UUID=${VLESS_UUID}" > /tmp/antizapret/setup/root/antizapret/setup
 
 #
 # Выставляем разрешения
@@ -487,6 +564,20 @@ else
 fi
 
 #
+# Используем TCP порт 80 в качестве резервного для OpenVPN
+if [[ "$OPENVPN_80_TCP" == "y" ]]; then
+	sed -i 's/^port 50443/port 80/' /etc/openvpn/server/antizapret-tcp.conf
+	sed -i 's/^port 50080/port 80/' /etc/openvpn/server/vpn-tcp.conf
+fi
+
+#
+# Используем UDP порт 80 в качестве резервного для OpenVPN
+if [[ "$OPENVPN_80_UDP" == "y" ]]; then
+	sed -i 's/^port 50443/port 80/' /etc/openvpn/server/antizapret-udp.conf
+	sed -i 's/^port 50080/port 80/' /etc/openvpn/server/vpn-udp.conf
+fi
+
+#
 # Запрещаем несколько одновременных подключений к OpenVPN для одного клиента
 if [[ "$OPENVPN_DUPLICATE" == "n" ]]; then
 	sed -i '/^duplicate-cn/s/^/#/' /etc/openvpn/server/*.conf
@@ -510,6 +601,8 @@ fi
 
 #
 # Включим обновляемые службы
+#
+# Включим обновляемые службы
 systemctl enable kresd@1
 systemctl enable kresd@2
 systemctl enable antizapret
@@ -521,6 +614,7 @@ systemctl enable openvpn-server@vpn-udp
 systemctl enable openvpn-server@vpn-tcp
 systemctl enable wg-quick@antizapret
 systemctl enable wg-quick@vpn
+systemctl enable xray
 
 ERRORS=""
 
