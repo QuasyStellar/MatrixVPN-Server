@@ -381,9 +381,8 @@ VLESS_PUBLIC_KEY=$(echo "$XRAY_KEYS" | grep 'Public key' | awk '{print $3}')
 VLESS_SHORT_ID=$(echo "$XRAY_KEYS" | grep 'ShortId' | awk '{print $2}')
 VLESS_UUID=$(/usr/local/bin/xray uuid)
 
-mkdir -p /etc/xray/
 
-cat << EOF > /etc/xray/config.json
+cat << EOF > /usr/local/etc/xray/config.json
 {
   "inbounds": [
     {

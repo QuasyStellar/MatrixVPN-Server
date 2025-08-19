@@ -409,7 +409,7 @@ recreate(){
         fi
 
         # VLESS Reality
-        if [[ -f /etc/xray/config.json ]]; then
+        if [[ -f /usr/local/etc/xray/config.json ]]; then
                 ls /root/antizapret/client/xray/vless-reality/ | sed 's/\.json$//' | sort | while read -r CLIENT_NAME; do
                         if [[ "$CLIENT_NAME" =~ ^[a-zA-Z0-9_-]{1,32}$ ]]; then
                                 addVLESSReality >/dev/null
