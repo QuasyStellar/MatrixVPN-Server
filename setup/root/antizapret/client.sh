@@ -82,6 +82,9 @@ addVLESSReality(){
         done < /root/antizapret/result/route-ips.txt
         ROUTE_IPS_JSON=$(IFS=,; echo "${ROUTE_IPS_ARRAY[*]}")
 
+        # Generate new shortId for the client
+        VLESS_SHORT_ID=$(openssl rand -hex 8)
+
         # Read template and populate
         VLESS_CLIENT_CONFIG=$(cat "/etc/xray/client/templates/vless-reality.json")
         VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{SERVER_EXTERNAL_IP_OR_DOMAIN\}/$SERVER_IP}
@@ -92,16 +95,40 @@ addVLESSReality(){
         VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//\$\{VLESS_SHORT_ID\}/$VLESS_SHORT_ID}
         VLESS_CLIENT_CONFIG=${VLESS_CLIENT_CONFIG//"/ Placeholder for additional IPs from route-ips.txt\n          // "\n          ${ROUTE_IPS_JSON}}
 
+        # Add the new shortId to the Xray config
+        sed -i -e 's/"shortIds": \[/"shortIds": [\n\t\t\t\t"'$VLESS_SHORT_ID'",/' /usr/local/etc/xray/config.json
+
         mkdir -p "/root/antizapret/client/${CLIENT_NAME}"
         echo "$VLESS_CLIENT_CONFIG" > "/root/antizapret/client/${CLIENT_NAME}/${CLIENT_NAME}.json"
 
         echo "VLESS Reality profile created for client '$CLIENT_NAME' at /root/antizapret/client/${CLIENT_NAME}/${CLIENT_NAME}.json"
+
+        # Restart Xray to apply changes
+        systemctl restart xray
 }
+
+
+
+
+
+
+
+
 
 deleteVLESSReality(){
         echo
+
+        # Get the shortId from the client's config file
+        VLESS_SHORT_ID=$(grep -o '"shortId": "[^"]*"' "/root/antizapret/client/${CLIENT_NAME}/${CLIENT_NAME}.json" | cut -d '"' -f 4)
+
+        # Remove the shortId from the Xray config
+        sed -i 's/"'$VLESS_SHORT_ID'",//g' /usr/local/etc/xray/config.json
+
         rm -rf "/root/antizapret/client/${CLIENT_NAME}"
         echo "VLESS Reality client '$CLIENT_NAME' successfully deleted"
+
+        # Restart Xray to apply changes
+        systemctl restart xray
 }
 
 listVLESSReality(){
