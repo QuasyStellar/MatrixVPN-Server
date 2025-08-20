@@ -58,21 +58,6 @@ echo 'More details: https://github.com/GubernievS/AntiZapret-VPN'
 #
 # Спрашиваем о настройках
 echo
-echo 'VLESS Reality XTLS will be installed.'
-until [[ "$VLESS_PORT" =~ ^[0-9]+$ ]] && [ "$VLESS_PORT" -ge 1 ] && [ "$VLESS_PORT" -le 65535 ]; do
-    read -rp 'Enter VLESS Reality port (e.g., 443, 8443): ' -e -i 443 VLESS_PORT
-done
-echo
-while read -rp 'Enter a legitimate website to mimic for VLESS Reality (e.g., www.apple.com:443): ' -e VLESS_DEST
-do
-    [[ -n "$VLESS_DEST" ]] && break
-done
-echo
-while read -rp 'Enter server names for VLESS Reality (comma-separated, e.g., www.apple.com,apple.com): ' -e VLESS_SERVER_NAMES
-do
-    [[ -n "$VLESS_SERVER_NAMES" ]] && break
-done
-
 echo 'Choose anti-censorship patch for OpenVPN (UDP only):'
 echo '    0) None        - Do not install anti-censorship patch, or remove if already installed'
 echo '    1) Strong      - Recommended by default'
@@ -166,6 +151,21 @@ while read -rp 'Enter valid domain name for this WireGuard/AmneziaWG server or p
 do
         [[ -z "$WIREGUARD_HOST" ]] && break
         [[ -n $(getent ahostsv4 "$WIREGUARD_HOST") ]] && break
+done
+echo
+echo 'VLESS Reality XTLS will be installed.'
+until [[ "$VLESS_PORT" =~ ^[-1-9]+$ ]] && [ "$VLESS_PORT" -ge 1 ] && [ "$VLESS_PORT" -le 65535 ]; do
+    read -rp 'Enter VLESS Reality port (e.g., 442, 8443): ' -e -i 443 VLESS_PORT
+done
+echo
+while read -rp 'Enter a legitimate website to mimic for VLESS Reality (e.g., www.apple.com:442): ' -e VLESS_DEST
+do
+    [[ -n "$VLESS_DEST" ]] && break
+done
+echo
+while read -rp 'Enter server names for VLESS Reality (comma-separated, e.g., www.apple.com,apple.com): ' -e VLESS_SERVER_NAMES
+do
+    [[ -n "$VLESS_SERVER_NAMES" ]] && break
 done
 echo
 until [[ "$ROUTE_ALL" =~ (y|n) ]]; do
@@ -278,7 +278,7 @@ apt-get purge -y sshguard &>/dev/null
 
 #
 # Остановим и выключим обновляемые службы
-for service in kresd@ openvpn-server@ wg-quick@; do
+for service in kresd@ openvpn-server@ wg-quick@ xray; do
         systemctl list-units --type=service --no-pager | awk -v s="$service" '$1 ~ s"[^.]+\\.service" {print $1}' | xargs -r systemctl stop &>/dev/null
         systemctl list-unit-files --type=service --no-pager | awk -v s="$service" '$1 ~ s"[^.]+\\.service" {print $1}' | xargs -r systemctl disable &>/dev/null
 done
@@ -379,8 +379,6 @@ echo 'Generating VLESS Reality keys...'
 XRAY_KEYS=$(/usr/local/bin/xray x25519)
 VLESS_PRIVATE_KEY=$(echo "$XRAY_KEYS" | grep 'Private key' | awk '{print $3}')
 VLESS_PUBLIC_KEY=$(echo "$XRAY_KEYS" | grep 'Public key' | awk '{print $3}')
-VLESS_SHORT_ID=$(echo "$XRAY_KEYS" | grep 'ShortId' | awk '{print $2}')
-VLESS_UUID=$(/usr/local/bin/xray uuid)
 
 
 cat << EOF > /usr/local/etc/xray/config.json
@@ -391,12 +389,7 @@ cat << EOF > /usr/local/etc/xray/config.json
       "port": $VLESS_PORT,
       "protocol": "vless",
       "settings": {
-        "clients": [
-          {
-            "id": "$VLESS_UUID",
-            "flow": "xtls-rprx-vision"
-          }
-        ],
+        "clients": [],
         "decryption": "none"
       },
       "streamSettings": {
@@ -411,9 +404,7 @@ cat << EOF > /usr/local/etc/xray/config.json
           "minClientVer": "",
           "maxClientVer": "",
           "maxTimeDiff": 0,
-          "shortIds": [
-            "$VLESS_SHORT_ID"
-          ]
+          "shortIds": []
         }
       }
     }
@@ -490,9 +481,7 @@ VLESS_PORT=${VLESS_PORT}
 VLESS_DEST=${VLESS_DEST}
 VLESS_SERVER_NAMES=${VLESS_SERVER_NAMES}
 VLESS_PRIVATE_KEY=${VLESS_PRIVATE_KEY}
-VLESS_PUBLIC_KEY=${VLESS_PUBLIC_KEY}
-VLESS_SHORT_ID=${VLESS_SHORT_ID}
-VLESS_UUID=${VLESS_UUID}" > /tmp/antizapret/setup/root/antizapret/setup
+VLESS_PUBLIC_KEY=${VLESS_PUBLIC_KEY}" > /tmp/antizapret/setup/root/antizapret/setup
 
 #
 # Выставляем разрешения
