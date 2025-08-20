@@ -412,12 +412,30 @@ cat << EOF > /usr/local/etc/xray/config.json
           "shortIds": ["$VLESS_SHORT_ID"]
         }
       }
+    },
+    {
+      "tag": "api-in",
+      "listen": "127.0.0.1",
+      "port": 10085,
+      "protocol": "dokodemo-door",
+      "settings": {
+        "address": "127.0.0.1"
+      }
     }
   ],
   "outbounds": [
     { "protocol": "freedom", "settings": {} },
     { "protocol": "blackhole", "tag": "api" }
-  ]
+  ],
+  "routing": {
+    "rules": [
+      {
+        "inboundTag": ["api-in"],
+        "outboundTag": "api",
+        "type": "field"
+      }
+    ]
+  }
 }
 EOF
 #
