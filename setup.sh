@@ -383,6 +383,21 @@ VLESS_PUBLIC_KEY=$(echo "$XRAY_KEYS" | grep 'Public key' | awk '{print $3}')
 
 cat << EOF > /usr/local/etc/xray/config.json
 {
+  "log": {
+    "loglevel": "warning"
+  },
+  "api": {
+    "tag": "api",
+    "services": [
+      "HandlerService"
+    ]
+  },
+  "policy": {
+    "system": {
+      "statsInboundDownlink": true,
+      "statsInboundUplink": true
+    }
+  },
   "inbounds": [
     {
       "listen": "0.0.0.0",
