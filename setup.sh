@@ -467,7 +467,8 @@ rm -rf /root/config
 
 #
 # Сохраняем настройки
-echo "SETUP_DATE=$(date --iso-8601=seconds)
+echo "SERVER_HOST=$(ip -4 addr | sed -ne 's|^.* inet \([^/]*\)/.* scope global.*$|\1|p' | awk '{print $1}' | head -1)
+SETUP_DATE=$(date --iso-8601=seconds)
 OPENVPN_PATCH=${OPENVPN_PATCH}
 OPENVPN_DCO=${OPENVPN_DCO}
 ANTIZAPRET_DNS=${ANTIZAPRET_DNS}
