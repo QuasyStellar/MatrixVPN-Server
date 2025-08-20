@@ -59,7 +59,7 @@ VPN-клиенты: [AmneziaWG (Windows)](https://github.com/amnezia-vpn/amnezia
 1. Устанавливать только на Ubuntu 22.04/24.04 или Debian 11/12 (рекомендуется Ubuntu 24.04)
 2. Для установки или обновления в терминале под root выполнить
 ```sh
-bash <(wget -qO- --no-hsts --inet4-only https://raw.githubusercontent.com/GubernievS/AntiZapret-VPN/main/setup.sh)
+bash <(wget -qO- --no-hsts --inet4-only https://raw.githubusercontent.com/QuasyStellar/AntiZapret-VPN/main/setup.sh)
 ```
 3. Изменить настройки (или нажимать Enter для выбора значения по умолчанию):
 	- Установить патч для обхода блокировки протокола OpenVPN (только для UDP соединений)
@@ -270,4 +270,4 @@ nano /root/antizapret/config/allow-ips.txt
 
 [cloudtips.ru](https://pay.cloudtips.ru/p/b3f20611)
 
-[boosty.to](https://boosty.to/QuasyStellar)
+[boosty.to](https://boosty.to/gubernievs)

@@ -2,7 +2,7 @@
 #
 # Скрипт для установки на своём сервере AntiZapret VPN и обычного VPN
 #
-# https://github.com/GubernievS/AntiZapret-VPN
+# https://github.com/QuasyStellar/AntiZapret-VPN
 #
 
 export LC_ALL=C
@@ -53,7 +53,7 @@ fi
 echo
 echo -e '\e[1;32mInstalling AntiZapret VPN + full VPN...\e[0m'
 echo 'OpenVPN + WireGuard + AmneziaWG'
-echo 'More details: https://github.com/GubernievS/AntiZapret-VPN'
+echo 'More details: https://github.com/QuasyStellar/AntiZapret-VPN'
 
 #
 # Спрашиваем о настройках
