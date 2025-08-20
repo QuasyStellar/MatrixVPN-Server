@@ -379,27 +379,21 @@ echo 'Generating VLESS Reality keys...'
 XRAY_KEYS=$(/usr/local/bin/xray x25519)
 VLESS_PRIVATE_KEY=$(echo "$XRAY_KEYS" | grep 'Private key' | awk '{print $3}')
 VLESS_PUBLIC_KEY=$(echo "$XRAY_KEYS" | grep 'Public key' | awk '{print $3}')
+VLESS_SHORT_ID=$(echo "$XRAY_KEYS" | grep 'ShortId' | awk '{print $2}')
+VLESS_UUID=$(/usr/local/bin/xray uuid)
 
 
 cat << EOF > /usr/local/etc/xray/config.json
 {
-  "log": {
-    "loglevel": "warning"
-  },
+  "log": { "loglevel": "warning" },
   "api": {
     "tag": "api",
-    "services": [
-      "HandlerService"
-    ]
-  },
-  "policy": {
-    "system": {
-      "statsInboundDownlink": true,
-      "statsInboundUplink": true
-    }
+    "services": ["HandlerService"],
+    "listen": "127.0.0.1:10085"
   },
   "inbounds": [
     {
+      "tag": "in-vless",
       "listen": "0.0.0.0",
       "port": $VLESS_PORT,
       "protocol": "vless",
@@ -414,29 +408,19 @@ cat << EOF > /usr/local/etc/xray/config.json
           "show": false,
           "dest": "$VLESS_DEST",
           "xver": 0,
-          "serverNames": [$(echo "$VLESS_SERVER_NAMES" | sed 's/,/","/g;s/^/"/;s/$/"/')],
+          "serverNames": ["$VLESS_SERVER_NAMES"],
           "privateKey": "$VLESS_PRIVATE_KEY",
-          "minClientVer": "",
-          "maxClientVer": "",
-          "maxTimeDiff": 0,
-          "shortIds": []
+          "shortIds": ["$VLESS_SHORT_ID"]
         }
       }
     }
   ],
   "outbounds": [
-    {
-      "protocol": "freedom",
-      "settings": {}
-    },
-    {
-      "protocol": "blackhole",
-      "tag": "api"
-    }
+    { "protocol": "freedom", "settings": {} },
+    { "protocol": "blackhole", "tag": "api" }
   ]
 }
 EOF
-
 #
 # Клонируем репозиторий и устанавливаем dnslib
 rm -rf /tmp/dnslib
@@ -496,7 +480,9 @@ VLESS_PORT=${VLESS_PORT}
 VLESS_DEST=${VLESS_DEST}
 VLESS_SERVER_NAMES=${VLESS_SERVER_NAMES}
 VLESS_PRIVATE_KEY=${VLESS_PRIVATE_KEY}
-VLESS_PUBLIC_KEY=${VLESS_PUBLIC_KEY}" > /tmp/antizapret/setup/root/antizapret/setup
+VLESS_PUBLIC_KEY=${VLESS_PUBLIC_KEY}
+VLESS_SHORT_ID=${VLESS_SHORT_ID}
+VLESS_UUID=${VLESS_UUID}" > /tmp/antizapret/setup/root/antizapret/setup
 
 #
 # Выставляем разрешения
