@@ -379,7 +379,7 @@ echo 'Generating VLESS Reality keys...'
 XRAY_KEYS=$(/usr/local/bin/xray x25519)
 VLESS_PRIVATE_KEY=$(echo "$XRAY_KEYS" | grep 'Private key' | awk '{print $3}')
 VLESS_PUBLIC_KEY=$(echo "$XRAY_KEYS" | grep 'Public key' | awk '{print $3}')
-VLESS_SHORT_ID=$(echo "$XRAY_KEYS" | grep 'ShortId' | awk '{print $2}')
+VLESS_SHORT_ID=$(head -c 16 /dev/urandom | base64 | tr -d '=+/')
 VLESS_UUID=$(/usr/local/bin/xray uuid)
 
 
