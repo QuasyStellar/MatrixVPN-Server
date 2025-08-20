@@ -262,6 +262,7 @@ fi
 mv -f /root/antizapret/custom.sh /root/antizapret/custom-doall.sh &>/dev/null
 
 rm -rf /root/vpn
+rm -rf /root/bot
 rm -rf /root/easy-rsa-ipsec
 rm -rf /root/.gnupg
 rm -rf /root/dnsmap
