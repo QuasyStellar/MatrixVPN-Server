@@ -111,14 +111,7 @@ echo 'Alternative IP address range: 172.28.0.0/14'
 until [[ "$ALTERNATIVE_IP" =~ (y|n) ]]; do
         read -rp 'Use alternative range of IP addresses? [y/n]: ' -e -i n ALTERNATIVE_IP
 done
-echo
-until [[ "$OPENVPN_80_TCP" =~ (y|n) ]]; do
-        read -rp 'Use TCP port 80 as backup for OpenVPN connections? [y/n]: ' -e -i y OPENVPN_80_TCP
-done
-echo
-until [[ "$OPENVPN_80_UDP" =~ (y|n) ]]; do
-        read -rp 'Use UDP port 80 as backup for OpenVPN connections? [y/n]: ' -e -i y OPENVPN_80_UDP
-done
+
 echo
 until [[ "$OPENVPN_DUPLICATE" =~ (y|n) ]]; do
         read -rp 'Allow multiple clients connecting to OpenVPN using same profile file (*.ovpn)? [y/n]: ' -e -i y OPENVPN_DUPLICATE
@@ -475,8 +468,7 @@ ANTIZAPRET_DNS=${ANTIZAPRET_DNS}
 VPN_DNS=${VPN_DNS}
 BLOCK_ADS=${BLOCK_ADS}
 ALTERNATIVE_IP=${ALTERNATIVE_IP}
-OPENVPN_80_TCP=${OPENVPN_80_TCP}
-OPENVPN_80_UDP=${OPENVPN_80_UDP}
+
 OPENVPN_DUPLICATE=${OPENVPN_DUPLICATE}
 OPENVPN_LOG=${OPENVPN_LOG}
 SSH_PROTECTION=${SSH_PROTECTION}
@@ -571,23 +563,15 @@ if [[ "$ALTERNATIVE_IP" == "y" ]]; then
         sed -i 's/10\./172\./g' /etc/openvpn/server/*.conf
         sed -i 's/10\./172\./g' /etc/wireguard/templates/*.conf
         find /etc/wireguard -name '*.conf' -exec sed -i 's/s = 10\./s = 172\./g' {} +
+        sed -i 's/"10\.30\.0\.0\/15"/"172\.30\.0\.0\/15"/g' /etc/xray/client/templates/vless-reality.json
+        sed -i 's/"10\.29\.0\.1"/"172\.29\.0\.1"/g' /etc/xray/client/templates/vless-reality.json
 else
         find /etc/wireguard -name '*.conf' -exec sed -i 's/s = 172\./s = 10\./g' {} +
+        sed -i 's/"172\.30\.0\.0\/15"/"10\.30\.0\.0\/15"/g' /etc/xray/client/templates/vless-reality.json
+        sed -i 's/"172\.29\.0\.1"/"10\.29\.0\.1"/g' /etc/xray/client/templates/vless-reality.json
 fi
 
-#
-# Используем TCP порт 80 в качестве резервного для OpenVPN
-if [[ "$OPENVPN_80_TCP" == "y" ]]; then
-        sed -i 's/^port 50443/port 80/' /etc/openvpn/server/antizapret-tcp.conf
-        sed -i 's/^port 50080/port 80/' /etc/openvpn/server/vpn-tcp.conf
-fi
 
-#
-# Используем UDP порт 80 в качестве резервного для OpenVPN
-if [[ "$OPENVPN_80_UDP" == "y" ]]; then
-        sed -i 's/^port 50443/port 80/' /etc/openvpn/server/antizapret-udp.conf
-        sed -i 's/^port 50080/port 80/' /etc/openvpn/server/vpn-udp.conf
-fi
 
 #
 # Запрещаем несколько одновременных подключений к OpenVPN для одного клиента

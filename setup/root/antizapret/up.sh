@@ -105,16 +105,8 @@ fi
 iptables -w -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
 # nat
-# OpenVPN TCP port redirection for backup connections
-if [[ "$OPENVPN_80_TCP" == "y" ]]; then
-	iptables -w -t nat -A PREROUTING -i "$INTERFACE" -p tcp --dport 80 -j REDIRECT --to-ports 50080
-	 
-fi
-# OpenVPN UDP port redirection for backup connections
-if [[ "$OPENVPN_80_UDP" == "y" ]]; then
-	iptables -w -t nat -A PREROUTING -i "$INTERFACE" -p udp --dport 80 -j REDIRECT --to-ports 50080
-	
-fi
+
+
 # AmneziaWG redirection ports to WireGuard
 iptables -w -t nat -A PREROUTING -i "$INTERFACE" -p udp --dport 52080 -j REDIRECT --to-ports 51080
 iptables -w -t nat -A PREROUTING -i "$INTERFACE" -p udp --dport 52443 -j REDIRECT --to-ports 51443
