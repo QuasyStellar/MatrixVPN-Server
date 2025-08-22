@@ -151,16 +151,15 @@ until [[ "$VLESS_PORT" =~ ^[-1-9]+$ ]] && [ "$VLESS_PORT" -ge 1 ] && [ "$VLESS_P
     read -rp 'Enter VLESS Reality port (e.g., 442, 8443): ' -e -i 443 VLESS_PORT
 done
 echo
-while read -rp 'Enter a legitimate website to mimic for VLESS Reality (e.g., www.apple.com:442): ' -e VLESS_DEST
+while read -rp 'Enter a legitimate website to mimic for VLESS Reality (e.g., www.google.com:442): ' -e -i "www.google.com:443" VLESS_DEST
 do
     [[ -n "$VLESS_DEST" ]] && break
 done
 echo
-while read -rp 'Enter server names for VLESS Reality (comma-separated, e.g., www.apple.com,apple.com): ' -e VLESS_SERVER_NAMES
+while read -rp 'Enter server names for VLESS Reality (comma-separated, e.g., www.google.com,google.com): ' -e -i "google.com" VLESS_SERVER_NAMES
 do
     [[ -n "$VLESS_SERVER_NAMES" ]] && break
 done
-echo
 until [[ "$ROUTE_ALL" =~ (y|n) ]]; do
         read -rp $'Route all traffic for domains via \001\e[1;32m\002AntiZapret VPN\001\e[0m\002, excluding Russian domains and domains from config/exclude-hosts.txt? [y/n]: ' -e -i n ROUTE_ALL
 done
