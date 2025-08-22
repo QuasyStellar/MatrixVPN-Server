@@ -593,7 +593,7 @@ fi
 #Создаем окружение и дефолтного пользователя
 apt-get install -y python3-venv
 python3 -m venv /root/antizapret/venv
-/root/antizapret/venv/bin/pip install sqlite3 xtlsapi 
+/root/antizapret/venv/bin/pip install  xtlsapi 
 /root/antizapret/client.py 11 default-user 3650
 
 # Включим обновляемые службы
