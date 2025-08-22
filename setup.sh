@@ -590,7 +590,7 @@ fi
 /root/antizapret/doall.sh ip
 
 
-#Создаем окружение и дефолтного пользователя
+#Создаем окружение
 apt-get install -y python3-venv
 python3 -m venv /root/antizapret/venv
 /root/antizapret/venv/bin/pip install  xtlsapi 
@@ -609,6 +609,9 @@ systemctl enable openvpn-server@vpn-tcp
 systemctl enable wg-quick@antizapret
 systemctl enable wg-quick@vpn
 systemctl enable xray
+
+#Создаем дефолтного пользователя
+/root/antizapret/client.py 11 default-user 3650
 
 ERRORS=""
 
