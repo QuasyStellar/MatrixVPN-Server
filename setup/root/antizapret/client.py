@@ -27,7 +27,7 @@ class Config:
         self.EASYRSA_DIR = self.get("EASYRSA_DIR", "/etc/openvpn/easyrsa3")
         self.OPENVPN_DIR = self.get("OPENVPN_DIR", "/etc/openvpn")
         self.WIREGUARD_DIR = self.get("WIREGUARD_DIR", "/etc/wireguard")
-        self.XRAY_DB_PATH = self.get("XRAY_DB_PATH", "/root/bot/x-ui.db")
+        self.XRAY_DB_PATH = self.get("XRAY_DB_PATH", "/root/antizapret/xray.db")
         self.XRAY_API_HOST = self.get("XRAY_API_HOST", "127.0.0.1")
         self.XRAY_API_PORT = int(self.get("XRAY_API_PORT", 10085))
 
