@@ -1,5 +1,6 @@
 #!/root/antizapret/venv/bin/python
 import os
+import pathlib
 import subprocess
 import argparse
 import re
@@ -257,6 +258,18 @@ def set_server_ip():
             SERVER_IP = match.group(1)
             return SERVER_IP
     handle_error("N/A", "ip -4 addr", "Default IP address not found!")
+
+
+def set_server_ip():
+    """Читает SERVER_HOST из файла setup и возвращает его значение."""
+    path = pathlib.Path("/root/antizapret/setup")
+    with path.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("SERVER_HOST="):
+                SERVER_IP = line.split("=", 1)[1].strip().strip("\"'")
+                return SERVER_IP
+    raise RuntimeError("SERVER_HOST не найден в setup")
 
 
 def render(template_file_path, variables):
