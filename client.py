@@ -257,6 +257,14 @@ def add_openvpn(client_name, client_cert_expire_days):
 
     client_crt_path = f"./pki/issued/{client_name}.crt"
     client_key_path = f"./pki/private/{client_name}.key"
+    client_req_path = f"./pki/reqs/{client_name}.req"
+    if (os.path.exists(client_crt_path) and not os.path.exists(client_key_path)) or (
+        os.path.exists(client_key_path) and not os.path.exists(client_crt_path)
+    ):
+        print("Detected inconsistent client state. Cleaning up old keys/certs...")
+        for f in [client_crt_path, client_key_path, client_req_path]:
+            if os.path.exists(f):
+                os.remove(f)
 
     if not (os.path.exists(client_crt_path) and os.path.exists(client_key_path)):
         print("Client does not exist. Building new client certificate.")
@@ -274,29 +282,20 @@ def add_openvpn(client_name, client_cert_expire_days):
     else:
         print("Client with that name already exists!")
         print("Current client certificate expiration period:")
-        run_command(["openssl", "x509", "-in", client_crt_path, "-noout", "-dates"])
-        print("\nAttention! Certificate renewal is NOT possible after 'notAfter' date")
+        for f in [client_crt_path, client_key_path, client_req_path]:
+            if os.path.exists(f):
+                os.remove(f)
         client_cert_expire_days = ask_client_cert_expire(str(client_cert_expire_days))
-        if client_cert_expire_days != 0:  # 0 means don't renew
-            print("Renewing client certificate...")
-            os.remove(client_crt_path)
-            run_command(
-                [
-                    "/usr/share/easy-rsa/easyrsa",
-                    "--batch",
-                    "--days",
-                    str(client_cert_expire_days),
-                    "sign",
-                    "client",
-                    client_name,
-                ]
-            )
-            # Remove old client key from client/keys if it exists
-            if os.path.exists(f"/etc/openvpn/client/keys/{client_name}.crt"):
-                os.remove(f"/etc/openvpn/client/keys/{client_name}.crt")
-        else:
-            print("Certificate renewal skipped.")
-
+        run_command(
+            [
+                "/usr/share/easy-rsa/easyrsa",
+                "--batch",
+                "build-client-full",
+                client_name,
+                "nopass",
+            ],
+            env={"EASYRSA_CERT_EXPIRE": str(client_cert_expire_days), **os.environ},
+        )
     # Copy client keys
     if not (
         os.path.exists(f"/etc/openvpn/client/keys/{client_name}.crt")
