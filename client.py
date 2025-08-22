@@ -155,7 +155,7 @@ def render(template_file_path, variables):
     rendered_content = []
     with open(template_file_path, "r") as f:
         for line in f:
-            # Replace ${VAR_NAME} placeholders
+            original_line = line  # Keep original line for comparison
             for match in re.finditer(r"\$\{[a-zA-Z_][a-zA-Z_0-9]*\}", line):
                 placeholder = match.group(0)  # e.g., ${SERVER_IP}
                 var_name = placeholder[2:-1]  # e.g., SERVER_IP
@@ -165,7 +165,9 @@ def render(template_file_path, variables):
                     # If variable not found, keep placeholder or replace with empty string
                     # Based on shell script's eval behavior, it would likely be empty if undefined
                     line = line.replace(placeholder, "")
+
             rendered_content.append(line)
+
     return "".join(rendered_content)
 
 
@@ -447,7 +449,7 @@ def init_wireguard():
 
 
 def add_wireguard(client_name):
-    """Adds a WireGuard client."""
+    """Adds or recreates a WireGuard client."""
     print(f"\nAdding WireGuard/AmneziaWG client: {client_name}")
     set_server_host_file_name(client_name, setup_config.get("WIREGUARD_HOST"))
 
@@ -476,107 +478,81 @@ def add_wireguard(client_name):
     # --- AntiZapret WireGuard ---
     print("Processing AntiZapret WireGuard configuration...")
     antizapret_conf_path = "/etc/wireguard/antizapret.conf"
-    client_block_az = ""
-    if os.path.exists(antizapret_conf_path):
-        with open(antizapret_conf_path, "r") as f:
-            content = f.read()
-            match = re.search(
-                rf"^# Client = {re.escape(client_name)}\n(.*?)^AllowedIPs",
-                content,
-                re.MULTILINE | re.DOTALL,
-            )
-            if match:
-                client_block_az = match.group(0)
+    client_exists_az = (
+        run_command(
+            ["grep", "-q", f"# Client = {client_name}", antizapret_conf_path],
+            check=False,
+        ).returncode
+        == 0
+    )
 
-    client_private_key_az = ""
-    client_public_key_az = ""
-    client_preshared_key_az = ""
-    client_ip_az = ""
+    if client_exists_az:
+        print(f"Client (AntiZapret) '{client_name}' exists. Recreating...")
+        run_command(
+            ["sed", "-i", f"/# Client = {client_name}/,/^$/d", antizapret_conf_path]
+        )
+        run_command(["sed", "-i", "/^$/d", antizapret_conf_path])
 
-    if client_block_az:
-        print(f"Client (AntiZapret) with name '{client_name}' already exists!")
-        client_private_key_az = (
-            re.search(r"# PrivateKey = (.*)", client_block_az).group(1).strip()
-        )
-        client_public_key_az = (
-            re.search(r"PublicKey = (.*)", client_block_az).group(1).strip()
-        )
-        client_preshared_key_az = (
-            re.search(r"PresharedKey = (.*)", client_block_az).group(1).strip()
-        )
-        client_ip_az = (
-            re.search(r"AllowedIPs = (.*?)/", client_block_az).group(1).strip()
-        )
-    else:
-        client_private_key_az = run_command(
-            ["wg", "genkey"], capture_output=True, text=True
-        ).stdout.strip()
-        client_public_key_az = run_command(
-            ["wg", "pubkey"],
-            input=client_private_key_az,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-        client_preshared_key_az = run_command(
-            ["wg", "genpsk"], capture_output=True, text=True
-        ).stdout.strip()
+    client_private_key_az = run_command(
+        ["wg", "genkey"], capture_output=True, text=True
+    ).stdout.strip()
+    client_public_key_az = run_command(
+        ["wg", "pubkey"], input=client_private_key_az, capture_output=True, text=True
+    ).stdout.strip()
+    client_preshared_key_az = run_command(
+        ["wg", "genpsk"], capture_output=True, text=True
+    ).stdout.strip()
 
-        base_client_ip_az = ""
-        with open(antizapret_conf_path, "r") as f:
-            for line in f:
-                if line.startswith("Address"):
-                    base_client_ip_az = line.split("=")[1].strip().split("/")[0]
-                    base_client_ip_az = ".".join(base_client_ip_az.split(".")[:3])
-                    break
-
-        found_ip = False
-        for i in range(2, 256):
-            potential_ip = f"{base_client_ip_az}.{i}"
-            if (
-                not run_command(
-                    ["grep", "-q", potential_ip, antizapret_conf_path], check=False
-                ).returncode
-                == 0
-            ):
-                client_ip_az = potential_ip
-                found_ip = True
+    base_client_ip_az = ""
+    with open(antizapret_conf_path, "r") as f:
+        for line in f:
+            if line.startswith("Address"):
+                base_client_ip_az = ".".join(
+                    line.split("=")[1].strip().split("/")[0].split(".")[:3]
+                )
                 break
-        if not found_ip:
-            handle_error(
-                "N/A",
-                "IP assignment",
-                "The WireGuard/AmneziaWG subnet can support only 253 clients!",
-            )
 
-        new_peer_config_az = f"""# Client = {client_name}
+    found_ip = False
+    for i in range(2, 256):
+        potential_ip = f"{base_client_ip_az}.{i}"
+        grep_result = run_command(
+            ["grep", "-q", potential_ip, antizapret_conf_path], check=False
+        )
+        if grep_result.returncode != 0:
+            client_ip_az = potential_ip
+            found_ip = True
+            break
+    if not found_ip:
+        handle_error(
+            "N/A",
+            "IP assignment",
+            "The WireGuard/AmneziaWG subnet can support only 253 clients!",
+        )
+
+    new_peer_config_az = f"""# Client = {client_name}
 # PrivateKey = {client_private_key_az}
 [Peer]
 PublicKey = {client_public_key_az}
 PresharedKey = {client_preshared_key_az}
 AllowedIPs = {client_ip_az}/32
 """
-        with open(antizapret_conf_path, "a") as f:
-            f.write(new_peer_config_az)
+    with open(antizapret_conf_path, "a") as f:
+        f.write(new_peer_config_az)
 
-        if (
-            run_command(
-                ["systemctl", "is-active", "--quiet", "wg-quick@antizapret"],
-                check=False,
-            ).returncode
-            == 0
-        ):
-            run_command(
-                ["wg", "syncconf", "antizapret"],
-                input=run_command(
-                    ["wg-quick", "strip", "antizapret"], capture_output=True, text=True
-                ).stdout,
-            )
+    if (
+        run_command(
+            ["systemctl", "is-active", "--quiet", "wg-quick@antizapret"], check=False
+        ).returncode
+        == 0
+    ):
+        run_command(
+            ["wg", "syncconf", "antizapret", "<(wg-quick strip antizapret)"], shell=True
+        )
 
     client_dir = f"/root/antizapret/client/{client_name}"
     os.makedirs(client_dir, exist_ok=True)
     current_date = datetime.now().strftime("%y-%m-%d")
 
-    # Prepare variables for rendering WireGuard client configs
     render_vars_wg_az = {
         "SERVER_HOST": SERVER_HOST,
         "SERVER_PUBLIC_KEY": server_public_key,
@@ -591,7 +567,6 @@ AllowedIPs = {client_ip_az}/32
     rendered_az_wg_conf = render(
         "/etc/wireguard/templates/antizapret-client-wg.conf", render_vars_wg_az
     )
-    # Ensure PublicKey is correctly set
     if "PublicKey = " in rendered_az_wg_conf:
         rendered_az_wg_conf = rendered_az_wg_conf.replace(
             "PublicKey = ", f"PublicKey = {server_public_key}"
@@ -602,7 +577,6 @@ AllowedIPs = {client_ip_az}/32
     rendered_az_am_conf = render(
         "/etc/wireguard/templates/antizapret-client-am.conf", render_vars_wg_az
     )
-    # Ensure PublicKey is correctly set
     if "PublicKey = " in rendered_az_am_conf:
         rendered_az_am_conf = rendered_az_am_conf.replace(
             "PublicKey = ", f"PublicKey = {server_public_key}"
@@ -613,102 +587,74 @@ AllowedIPs = {client_ip_az}/32
     # --- VPN WireGuard ---
     print("Processing VPN WireGuard configuration...")
     vpn_conf_path = "/etc/wireguard/vpn.conf"
-    client_block_vpn = ""
-    if os.path.exists(vpn_conf_path):
-        with open(vpn_conf_path, "r") as f:
-            content = f.read()
-            match = re.search(
-                rf"^# Client = {re.escape(client_name)}\n(.*?)^AllowedIPs",
-                content,
-                re.MULTILINE | re.DOTALL,
-            )
-            if match:
-                client_block_vpn = match.group(0)
+    client_exists_vpn = (
+        run_command(
+            ["grep", "-q", f"# Client = {client_name}", vpn_conf_path], check=False
+        ).returncode
+        == 0
+    )
 
-    client_private_key_vpn = ""
-    client_public_key_vpn = ""
-    client_preshared_key_vpn = ""
-    client_ip_vpn = ""
+    if client_exists_vpn:
+        print(f"Client (VPN) '{client_name}' exists. Recreating...")
+        run_command(["sed", "-i", f"/# Client = {client_name}/,/^$/d", vpn_conf_path])
+        run_command(["sed", "-i", "/^$/d", vpn_conf_path])
 
-    if client_block_vpn:
-        print(f"Client (VPN) with name '{client_name}' already exists!")
-        client_private_key_vpn = (
-            re.search(r"# PrivateKey = (.*)", client_block_vpn).group(1).strip()
-        )
-        client_public_key_vpn = (
-            re.search(r"PublicKey = (.*)", client_block_vpn).group(1).strip()
-        )
-        client_preshared_key_vpn = (
-            re.search(r"PresharedKey = (.*)", client_block_vpn).group(1).strip()
-        )
-        client_ip_vpn = (
-            re.search(r"AllowedIPs = (.*?)/", client_block_vpn).group(1).strip()
-        )
-    else:
-        client_private_key_vpn = run_command(
-            ["wg", "genkey"], capture_output=True, text=True
-        ).stdout.strip()
-        client_public_key_vpn = run_command(
-            ["wg", "pubkey"],
-            input=client_private_key_vpn,
-            capture_output=True,
-            text=True,
-        ).stdout.strip()
-        client_preshared_key_vpn = run_command(
-            ["wg", "genpsk"], capture_output=True, text=True
-        ).stdout.strip()
+    client_private_key_vpn = run_command(
+        ["wg", "genkey"], capture_output=True, text=True
+    ).stdout.strip()
+    client_public_key_vpn = run_command(
+        ["wg", "pubkey"], input=client_private_key_vpn, capture_output=True, text=True
+    ).stdout.strip()
+    client_preshared_key_vpn = run_command(
+        ["wg", "genpsk"], capture_output=True, text=True
+    ).stdout.strip()
 
-        base_client_ip_vpn = ""
-        with open(vpn_conf_path, "r") as f:
-            for line in f:
-                if line.startswith("Address"):
-                    base_client_ip_vpn = line.split("=")[1].strip().split("/")[0]
-                    base_client_ip_vpn = ".".join(base_client_ip_vpn.split(".")[:3])
-                    break
-
-        found_ip = False
-        for i in range(2, 256):
-            potential_ip = f"{base_client_ip_vpn}.{i}"
-            if (
-                not run_command(
-                    ["grep", "-q", potential_ip, vpn_conf_path], check=False
-                ).returncode
-                == 0
-            ):
-                client_ip_vpn = potential_ip
-                found_ip = True
+    base_client_ip_vpn = ""
+    with open(vpn_conf_path, "r") as f:
+        for line in f:
+            if line.startswith("Address"):
+                base_client_ip_vpn = ".".join(
+                    line.split("=")[1].strip().split("/")[0].split(".")[:3]
+                )
                 break
-        if not found_ip:
-            handle_error(
-                "N/A",
-                "IP assignment",
-                "The WireGuard/AmneziaWG subnet can support only 253 clients!",
-            )
 
-        new_peer_config_vpn = f"""# Client = {client_name}
+    found_ip = False
+    for i in range(2, 256):
+        potential_ip = f"{base_client_ip_vpn}.{i}"
+        if (
+            run_command(
+                ["grep", "-q", potential_ip, vpn_conf_path], check=False
+            ).returncode
+            != 0
+        ):
+            client_ip_vpn = potential_ip
+            found_ip = True
+            break
+    if not found_ip:
+        handle_error(
+            "N/A",
+            "IP assignment",
+            "The WireGuard/AmneziaWG subnet can support only 253 clients!",
+        )
+
+    new_peer_config_vpn = f"""# Client = {client_name}
 # PrivateKey = {client_private_key_vpn}
 [Peer]
 PublicKey = {client_public_key_vpn}
 PresharedKey = {client_preshared_key_vpn}
 AllowedIPs = {client_ip_vpn}/32
 """
-        with open(vpn_conf_path, "a") as f:
-            f.write(new_peer_config_vpn)
+    with open(vpn_conf_path, "a") as f:
+        f.write(new_peer_config_vpn)
 
-        if (
-            run_command(
-                ["systemctl", "is-active", "--quiet", "wg-quick@vpn"], check=False
-            ).returncode
-            == 0
-        ):
-            run_command(
-                ["wg", "syncconf", "vpn"],
-                input=run_command(
-                    ["wg-quick", "strip", "vpn"], capture_output=True, text=True
-                ).stdout,
-            )
+    if (
+        run_command(
+            ["systemctl", "is-active", "--quiet", "wg-quick@vpn"], check=False
+        ).returncode
+        == 0
+    ):
+        run_command(["wg", "syncconf", "vpn", "<(wg-quick strip vpn)"], shell=True)
 
-    # Prepare variables for rendering VPN client configs
     render_vars_wg_vpn = {
         "SERVER_HOST": SERVER_HOST,
         "SERVER_PUBLIC_KEY": server_public_key,
@@ -723,7 +669,6 @@ AllowedIPs = {client_ip_vpn}/32
     rendered_gl_wg_conf = render(
         "/etc/wireguard/templates/vpn-client-wg.conf", render_vars_wg_vpn
     )
-    # Ensure PublicKey is correctly set
     if "PublicKey = " in rendered_gl_wg_conf:
         rendered_gl_wg_conf = rendered_gl_wg_conf.replace(
             "PublicKey = ", f"PublicKey = {server_public_key}"
@@ -734,7 +679,6 @@ AllowedIPs = {client_ip_vpn}/32
     rendered_gl_am_conf = render(
         "/etc/wireguard/templates/vpn-client-am.conf", render_vars_wg_vpn
     )
-    # Ensure PublicKey is correctly set
     if "PublicKey = " in rendered_gl_am_conf:
         rendered_gl_am_conf = rendered_gl_am_conf.replace(
             "PublicKey = ", f"PublicKey = {server_public_key}"
@@ -781,40 +725,21 @@ def delete_wireguard(client_name):
 
     # Remove client block from antizapret.conf
     if client_exists_az:
-        with open(antizapret_conf_path, "r") as f:
-            lines = f.readlines()
-        new_lines = []
-        in_client_block = False
-        for line in lines:
-            if f"# Client = {client_name}" in line:
-                in_client_block = True
-            if in_client_block and "AllowedIPs" in line:
-                in_client_block = False
-                continue  # Skip the AllowedIPs line as well
-            if not in_client_block:
-                new_lines.append(line)
-        with open(antizapret_conf_path, "w") as f:
-            f.writelines(new_lines)
-            run_command(["sed", "-i", "/^$/N;/^\\n$/D", antizapret_conf_path])
+        run_command(
+            ["sed", "-i", f"/# Client = {client_name}/,/^$/d", antizapret_conf_path],
+            description=f"Deleting client block for {client_name} from {antizapret_conf_path}",
+        )
+        # Remove empty lines that might result from deletion
+        run_command(["sed", "-i", r"/^$/N;/^\\n$/D", antizapret_conf_path])
 
     # Remove client block from vpn.conf
     if client_exists_vpn:
-        with open(vpn_conf_path, "r") as f:
-            lines = f.readlines()
-        new_lines = []
-        in_client_block = False
-        for line in lines:
-            if f"# Client = {client_name}" in line:
-                in_client_block = True
-            if in_client_block and "AllowedIPs" in line:
-                in_client_block = False
-                continue  # Skip the AllowedIPs line as well
-            if not in_client_block:
-                new_lines.append(line)
-        with open(vpn_conf_path, "w") as f:
-            f.writelines(new_lines)
+        run_command(
+            ["sed", "-i", f"/# Client = {client_name}/,/^$/d", vpn_conf_path],
+            description=f"Deleting client block for {client_name} from {vpn_conf_path}",
+        )
         # Remove empty lines
-        run_command(["sed", "-i", "/^$/N;/^\\n$/D", vpn_conf_path])
+        run_command(["sed", "-i", r"/^$/N;/^\\n$/D", vpn_conf_path])
 
     client_dir = f"/root/antizapret/client/{client_name}"
     if os.path.exists(client_dir):
@@ -827,10 +752,7 @@ def delete_wireguard(client_name):
         == 0
     ):
         run_command(
-            ["wg", "syncconf", "antizapret"],
-            input=run_command(
-                ["wg-quick", "strip", "antizapret"], capture_output=True, text=True
-            ).stdout,
+            ["wg", "syncconf", "antizapret", "<(wg-quick strip antizapret)"], shell=True
         )
 
     if (
@@ -839,14 +761,17 @@ def delete_wireguard(client_name):
         ).returncode
         == 0
     ):
-        run_command(
-            ["wg", "syncconf", "vpn"],
-            input=run_command(
-                ["wg-quick", "strip", "vpn"], capture_output=True, text=True
-            ).stdout,
-        )
+        run_command(["wg", "syncconf", "vpn", "<(wg-quick strip vpn)"], shell=True)
 
     print(f"WireGuard/AmneziaWG client '{client_name}' successfully deleted")
+
+
+def delete_all_protocols(client_name):
+    """Deletes a client across all supported protocols."""
+    print(f"\nDeleting client '{client_name}' from all protocols...")
+    delete_openvpn(client_name)
+    delete_wireguard(client_name)
+    print(f"Client '{client_name}' deletion across all protocols completed.")
 
 
 def list_wireguard():
@@ -935,7 +860,7 @@ def recreate_profiles():
         init_openvpn()
         for client_name in sorted(openvpn_client_names):
             if re.match(r"^[a-zA-Z0-9_-]{1,32}", client_name):
-                add_openvpn(client_name, 365)  # Assuming 365 days for re-creation
+                add_openvpn(client_name, 3650)  # Assuming 3650 days for re-creation
                 print(f"OpenVPN profile files recreated for client '{client_name}'")
             else:
                 print(
@@ -1075,15 +1000,16 @@ def main():
         print("    4) WireGuard/AmneziaWG - Add client")
         print("    5) WireGuard/AmneziaWG - Delete client")
         print("    6) WireGuard/AmneziaWG - List clients")
-        print("    7) Recreate client profile files")
-        print("    8) Backup configuration and clients")
-        print("    9) Create all VPN client types (OpenVPN and WireGuard)")
+        print("    7) Create all VPN client types (OpenVPN and WireGuard)")
+        print("    8) Delete client from all protocols")
+        print("    9) Recreate client profile files")
+        print("    10) Backup configuration and clients")
 
         while True:
             try:
                 option_input = input("Option choice [1-8]: ").strip()
                 option = int(option_input)
-                if 1 <= option <= 9:
+                if 1 <= option <= 10:
                     break
                 else:
                     print("Invalid option. Please enter a number between 1 and 8.")
@@ -1124,12 +1050,6 @@ def main():
         print("WireGuard/AmneziaWG - List clients")
         list_wireguard()
     elif option == 7:
-        print("Recreate client profile files")
-        recreate_profiles()
-    elif option == 8:
-        print("Backup configuration and clients")
-        backup_config()
-    elif option == 9:
         print("Create all VPN client types (OpenVPN and WireGuard)")
         client_name = ask_client_name(client_name)
         client_cert_expire = ask_client_cert_expire(
@@ -1139,6 +1059,16 @@ def main():
         add_openvpn(client_name, client_cert_expire)
         init_wireguard()
         add_wireguard(client_name)
+    elif option == 8:
+        print(f"Delete client from all protocols {client_name if client_name else ''}")
+        client_name = ask_client_name(client_name)
+        delete_all_protocols(client_name)
+    elif option == 9:
+        print("Recreate client profile files")
+        recreate_profiles()
+    elif option == 10:
+        print("Backup configuration and clients")
+        backup_config()
     else:
         print("Invalid option selected.")
 
