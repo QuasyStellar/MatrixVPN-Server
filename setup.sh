@@ -562,12 +562,10 @@ if [[ "$ALTERNATIVE_IP" == "y" ]]; then
         sed -i 's/10\./172\./g' /etc/openvpn/server/*.conf
         sed -i 's/10\./172\./g' /etc/wireguard/templates/*.conf
         find /etc/wireguard -name '*.conf' -exec sed -i 's/s = 10\./s = 172\./g' {} +
-        sed -i 's/"10\.30\.0\.0\/15"/"172\.30\.0\.0\/15"/g' /etc/xray/client/templates/vless-reality.json
-        sed -i 's/"10\.29\.0\.1"/"172\.29\.0\.1"/g' /etc/xray/client/templates/vless-reality.json
+        
 else
-        find /etc/wireguard -name '*.conf' -exec sed -i 's/s = 172\./s = 10\./g' {} +
+        find /etc/wireguard -name '*.conf' -exec sed -i 's/s = 172\./s = 10\./g' {} +\n        
         sed -i 's/"172\.30\.0\.0\/15"/"10\.30\.0\.0\/15"/g' /etc/xray/client/templates/vless-reality.json
-        sed -i 's/"172\.29\.0\.1"/"10\.29\.0\.1"/g' /etc/xray/client/templates/vless-reality.json
 fi
 
 

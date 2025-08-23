@@ -114,9 +114,11 @@ iptables -w -t nat -A PREROUTING -i "$INTERFACE" -p udp --dport 52443 -j REDIREC
 iptables -w -t nat -A PREROUTING -s ${IP}.29.0.0/22 ! -d ${IP}.29.0.1/32 -p udp --dport 53 -j DNAT --to-destination ${IP}.29.0.1
 iptables -w -t nat -A PREROUTING -s ${IP}.29.4.0/22 ! -d ${IP}.29.4.1/32 -p udp --dport 53 -j DNAT --to-destination ${IP}.29.4.1
 iptables -w -t nat -A PREROUTING -s ${IP}.29.8.0/24 ! -d ${IP}.29.8.1/32 -p udp --dport 53 -j DNAT --to-destination ${IP}.29.8.1
+iptables -w -t nat -A PREROUTING -s ${IP}.29.12.0/24 ! -d ${IP}.29.12.1/32 -p udp --dport 53 -j DNAT --to-destination ${IP}.29.12.1
 iptables -w -t nat -A PREROUTING -s ${IP}.29.0.0/22 ! -d ${IP}.29.0.1/32 -p tcp --dport 53 -j DNAT --to-destination ${IP}.29.0.1
 iptables -w -t nat -A PREROUTING -s ${IP}.29.4.0/22 ! -d ${IP}.29.4.1/32 -p tcp --dport 53 -j DNAT --to-destination ${IP}.29.4.1
 iptables -w -t nat -A PREROUTING -s ${IP}.29.8.0/24 ! -d ${IP}.29.8.1/32 -p tcp --dport 53 -j DNAT --to-destination ${IP}.29.8.1
+iptables -w -t nat -A PREROUTING -s ${IP}.29.12.0/24 ! -d ${IP}.29.12.1/32 -p tcp --dport 53 -j DNAT --to-destination ${IP}.29.12.1
 # Restrict forwarding
 if [[ "$RESTRICT_FORWARD" == "y" ]]; then
 	iptables -w -t nat -A PREROUTING -s ${IP}.29.0.0/16 ! -d ${IP}.30.0.0/15 -j CONNMARK --set-mark 0x1

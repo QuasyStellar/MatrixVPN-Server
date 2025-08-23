@@ -30,6 +30,7 @@ class Config:
         self.XRAY_DB_PATH = self.get("XRAY_DB_PATH", "/root/antizapret/xray.db")
         self.XRAY_API_HOST = self.get("XRAY_API_HOST", "127.0.0.1")
         self.XRAY_API_PORT = int(self.get("XRAY_API_PORT", 10085))
+        self.IP = self.get("IP", "10") # Add IP to config
 
         self.CLIENT_BASE_DIR = os.path.join(self.ROOT_DIR, "client")
         self.BACKUP_BASE_DIR = os.path.join(self.ROOT_DIR, "backup")
@@ -830,7 +831,7 @@ def generate_client_config(
     """Generates the client-side VLESS configuration dictionary."""
     # This function remains largely the same, just ensure variables are passed correctly.
     return {
-        "dns": {"servers": ["10.29.0.1"]},
+        "dns": {"servers": [f"{config.IP}.29.12.1"]},
         "fakedns": [
             {"ipPool": "198.20.0.0/15", "poolSize": 128},
             {"ipPool": "fc00::/64", "poolSize": 128},
