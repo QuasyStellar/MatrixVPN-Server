@@ -30,8 +30,7 @@ class Config:
         self.XRAY_DB_PATH = self.get("XRAY_DB_PATH", "/root/antizapret/xray.db")
         self.XRAY_API_HOST = self.get("XRAY_API_HOST", "127.0.0.1")
         self.XRAY_API_PORT = int(self.get("XRAY_API_PORT", 10085))
-        self.IP = self.get("IP", "10") # Add IP to config
-
+        self.IP = "172" if self.get("ALTERNATIVE_IP", "n").lower() == "y" else "10"
         self.CLIENT_BASE_DIR = os.path.join(self.ROOT_DIR, "client")
         self.BACKUP_BASE_DIR = os.path.join(self.ROOT_DIR, "backup")
         self.SERVER_CONFIG_PATH = os.path.join(self.ROOT_DIR, "setup")
@@ -890,7 +889,7 @@ def generate_client_config(
             "domainStrategy": "IPOnDemand",
             "rules": [
                 {
-                    "ip": ["10.30.0.0/15", "10.29.0.1"],
+                    "ip": ["10.30.0.0/15", f"{config.IP}.29.12.1"],
                     "outboundTag": "proxy",
                     "type": "field",
                 },
