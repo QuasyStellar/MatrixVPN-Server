@@ -615,6 +615,7 @@ systemctl enable openvpn-server@vpn-tcp
 systemctl enable wg-quick@antizapret
 systemctl enable wg-quick@vpn
 systemctl enable xray
+systemctl unmask systemd-networkd
 systemctl enable systemd-networkd
 
 #Создаем дефолтного пользователя
