@@ -710,7 +710,6 @@ def recreate_profiles(xray_client):
                     handle_add_user(
                         argparse.Namespace(name=user["email"]),
                         xray_client,
-                        force_recreate=True,
                     )
             else:
                 print("No VLESS users found.")
@@ -921,10 +920,16 @@ def wait_for_xray_api(xray_client, max_retries=10, delay=3):
     return False
 
 
-def handle_add_user(args, xray_client, force_recreate=True):
+def handle_add_user(args, xray_client):
     email = args.name or input("Enter user email: ")
-    user_id = None
-    if not force_recreate:
+    user = get_user_by_email_from_db(email)
+
+    if user:
+        print(f"User '{email}' exists. Recreating client config...")
+        user_id = user["uuid"]
+        xray_client.remove_client(INBOUND_TAG, email)
+    else:
+        print(f"Creating new user '{email}'.")
         user_id = utils.generate_random_user_id()
         if not add_user_to_db(user_id, email):
             return
@@ -942,12 +947,6 @@ def handle_add_user(args, xray_client, force_recreate=True):
             print(f"An exception occurred while adding user to Xray: {e}")
             remove_user_from_db(user_id)
             return
-    else:
-        user = get_user_by_email_from_db(email)
-        if not user:
-            print(f"Error: User with email '{email}' not found in the database.")
-            return
-        user_id = user["uuid"]
 
     server_host = config.get("SERVER_HOST")
     public_key = config.get("VLESS_PUBLIC_KEY")
@@ -961,12 +960,14 @@ def handle_add_user(args, xray_client, force_recreate=True):
     client_config = generate_client_config(
         user_id, server_host, public_key, server_names, 443, short_id
     )
+
     client_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", email)
     dir_path = os.path.join(config.CLIENT_BASE_DIR, client_name)
     os.makedirs(dir_path, exist_ok=True)
     file_path = os.path.join(
         dir_path, f"AZ-XR-{datetime.now().strftime('%y-%m-%d')}.json"
     )
+
     with open(file_path, "w") as f:
         json.dump(client_config, f, indent=4)
     print(f"Client config saved to: {file_path}")
