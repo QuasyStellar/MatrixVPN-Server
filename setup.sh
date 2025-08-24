@@ -570,27 +570,26 @@ else
 fi
 
 INTERFACE="antizapret-xray-dns"
-NETMASK="255.255.255.0"
-INTERFACES_FILE="/etc/network/interfaces"
+SERVICE_FILE="/etc/systemd/system/${INTERFACE}.service"
 
-# Проверяем, есть ли уже запись в interfaces
-if grep -q "iface $INTERFACE inet" "$INTERFACES_FILE"; then
-    echo "$INTERFACE уже настроен в $INTERFACES_FILE"
-else
-    echo "Добавляем $INTERFACE в $INTERFACES_FILE"
+# Создаём systemd unit
+cat <<EOL > "$SERVICE_FILE"
+[Unit]
+Description=Dummy interface $INTERFACE
+After=network.target
 
-    cat <<EOL >> "$INTERFACES_FILE"
+[Service]
+Type=oneshot
+ExecStart=/sbin/ip link add $INTERFACE type dummy
+ExecStart=/sbin/ip addr add $IP_ADDR/24 dev $INTERFACE
+ExecStart=/sbin/ip link set $INTERFACE up
+RemainAfterExit=yes
 
-auto $INTERFACE
-iface $INTERFACE inet static
-    address $IP_ADDR
-    netmask $NETMASK
-    pre-up ip link add $INTERFACE type dummy
+[Install]
+WantedBy=multi-user.target
 EOL
 
-    echo "Интерфейс $INTERFACE добавлен."
-fi
-
+echo "Сервис $INTERFACE.service создан и интерфейс $INTERFACE поднят с IP $IP_ADDR"
 
 
 #
@@ -619,6 +618,7 @@ python3 -m venv /root/antizapret/venv
 # Включим обновляемые службы
 systemctl enable kresd@1
 systemctl enable kresd@2
+systemctl enable "$INTERFACE.service"
 systemctl enable antizapret
 systemctl enable antizapret-update
 systemctl enable antizapret-update.timer
