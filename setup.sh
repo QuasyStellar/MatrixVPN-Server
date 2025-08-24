@@ -430,6 +430,16 @@ cat << EOF > /usr/local/etc/xray/config.json
   }
 }
 EOF
+
+mkdir -p /etc/systemd/network
+cat << EOF > /etc/systemd/network/antizapret-xray-dns.network
+[NetDev]
+Name=antizapret-xray-dns
+Kind=dummy
+
+[Address]
+Address=10.29.12.1/24
+EOF
 #
 # Клонируем репозиторий и устанавливаем dnslib
 rm -rf /tmp/dnslib
@@ -561,6 +571,7 @@ if [[ "$ALTERNATIVE_IP" == "y" ]]; then
         sed -i 's/10\.29\./172\.29\./g' /etc/knot-resolver/kresd.conf
         sed -i 's/10\./172\./g' /etc/openvpn/server/*.conf
         sed -i 's/10\./172\./g' /etc/wireguard/templates/*.conf
+        sed -i 's/10\./172\./g' /etc/systemd/network/antizapret-xray-dns.service
         find /etc/wireguard -name '*.conf' -exec sed -i 's/s = 10\./s = 172\./g' {} +
 else 
         find /etc/wireguard -name '*.conf' -exec sed -i 's/s = 172\./s = 10\./g' {} +
@@ -604,6 +615,7 @@ systemctl enable openvpn-server@vpn-tcp
 systemctl enable wg-quick@antizapret
 systemctl enable wg-quick@vpn
 systemctl enable xray
+systemctl enable systemd-networkd
 
 #Создаем дефолтного пользователя
 /root/antizapret/client.py 11 default-user 3650
