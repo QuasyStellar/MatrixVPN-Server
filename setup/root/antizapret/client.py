@@ -921,7 +921,7 @@ def wait_for_xray_api(xray_client, max_retries=10, delay=3):
     return False
 
 
-def handle_add_user(args, xray_client, force_recreate=False):
+def handle_add_user(args, xray_client, force_recreate=True):
     email = args.name or input("Enter user email: ")
     user_id = None
     if not force_recreate:
