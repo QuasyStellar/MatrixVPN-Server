@@ -168,7 +168,7 @@ def modify_wg_config(config_path, client_name, new_peer_block=None):
         new_lines.pop()
 
     if new_peer_block:
-        new_lines.append("\n\n")
+        new_lines.append("\n")
         new_lines.append(new_peer_block)
         new_lines.append("\n")
 
