@@ -132,7 +132,7 @@ if [[ -z "$1" || "$1" == "host" || "$1" == "hosts" ]]; then
 	echo -e '$TTL 3600\n@ SOA . . (0 0 0 0 0)' > result/deny.rpz
 	sed 's/$/ CNAME ./; p; s/^/*./' result/include-adblock-hosts.txt >> result/deny.rpz
 	sed 's/$/ CNAME rpz-passthru./; p; s/^/*./' result/exclude-adblock-hosts.txt >> result/deny.rpz
-	sed '/^;/d; /^$/d' download/rpz.txt config/*rpz.txt >> result/deny.rpz
+	sed 's/\r//g; /^;/d; /^$/d' download/rpz.txt config/*rpz.txt >> result/deny.rpz
 
 	# Обновляем файл в Knot Resolver только если файл deny.rpz изменился
 	if [[ -f result/deny.rpz ]] && ! diff -q result/deny.rpz /etc/knot-resolver/deny.rpz; then
@@ -169,7 +169,8 @@ if [[ -z "$1" || "$1" == "host" || "$1" == "hosts" ]]; then
 	# Удаляем избыточные домены
 	sed -e 's/^/^/' -e 's/$/$/' temp/include-hosts3.txt > temp/include-hosts4.txt
 	sed -e 's/^/./' -e 's/$/$/' temp/include-hosts3.txt > temp/exclude-patterns.txt
-	grep -vFf temp/exclude-patterns.txt temp/include-hosts4.txt > temp/include-hosts5.txt || true
+	grep -vFf temp/exclude-patterns.txt temp/include-hosts4.txt > temp/include-hosts5.txt || \
+	( echo "Low memory!"; cp temp/include-hosts4.txt temp/include-hosts5.txt )
 
 	# Удаляем исключённые домены
 	sed -e 's/^/^/' -e 's/$/$/' result/exclude-hosts.txt > temp/exclude-patterns2.txt
@@ -177,10 +178,10 @@ if [[ -z "$1" || "$1" == "host" || "$1" == "hosts" ]]; then
 
 	if [[ "$ROUTE_ALL" = "y" ]]; then
 		# Пустим все домены через AntiZapret VPN
-		grep -Ff temp/exclude-patterns2.txt temp/include-hosts5.txt > temp/include-hosts6.txt || true
+		grep -Ff temp/exclude-patterns2.txt temp/include-hosts5.txt > temp/include-hosts6.txt
 		echo '.' >> temp/include-hosts6.txt
 	else
-		grep -vFf temp/exclude-patterns2.txt temp/include-hosts5.txt > temp/include-hosts6.txt || true
+		grep -vFf temp/exclude-patterns2.txt temp/include-hosts5.txt > temp/include-hosts6.txt
 	fi
 
 	sed -e 's/^\^//' -e 's/\$$//' temp/include-hosts6.txt > result/include-hosts.txt

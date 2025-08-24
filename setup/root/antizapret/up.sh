@@ -28,6 +28,11 @@ sysctl -w kernel.printk="3 4 1 3"
 sysctl -w net.core.default_qdisc=fq || true
 sysctl -w net.ipv4.tcp_congestion_control=bbr || true
 
+# Disable IPv6
+sysctl -w net.ipv6.conf.all.disable_ipv6=1
+sysctl -w net.ipv6.conf.default.disable_ipv6=1
+sysctl -w net.ipv6.conf.lo.disable_ipv6=1
+
 # filter
 # Default policy
 iptables -w -P INPUT ACCEPT
@@ -130,3 +135,4 @@ iptables -w -t nat -A PREROUTING -s ${IP}.29.0.0/16 -d ${IP}.30.0.0/15 -j ANTIZA
 iptables -w -t nat -A POSTROUTING -s ${IP}.28.0.0/15 -o "$INTERFACE" -j SNAT --to-source "$EXTERNAL_IP"
 
 /root/antizapret/custom-up.sh
+exit 0
