@@ -1,4 +1,4 @@
-# [MatrixVPN](https://t.me/MatrixVPNTunnel_bot)
+# [MatrixVPN-Server](https://t.me/MatrixVPNTunnel_bot)
 |Уникальное решение с поддержкой АнтиЗапрет и полного туннелирования с использованием протоколов **VLESS (XTLS, Reality)**, **OpenVPN** (с патчем для обхода блокировок), **WireGuard** и **AmneziaWG**|
 |------------------|
 
