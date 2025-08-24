@@ -569,18 +569,21 @@ else
     IP_ADDR="10.29.12.1"
 fi
 
-INTERFACE="antizapret-xray-dns"
-SERVICE_FILE="/etc/systemd/system/${INTERFACE}.service"
+INTERFACE="antizapret-xray"
+SERVICE_FILE="/etc/systemd/system/$INTERFACE.service"
 
-# Создаём systemd unit
+# Создаём systemd unit для интерфейса DNS Xray
 cat <<EOL > "$SERVICE_FILE"
 [Unit]
 Description=Dummy interface $INTERFACE
-After=network.target
+After=network-pre.target
+Before=network.target
+DefaultDependencies=no
 
 [Service]
 Type=oneshot
-ExecStart=/sbin/ip link add $INTERFACE type dummy
+ExecStartPre=/sbin/modprobe dummy
+ExecStart=/sbin/ip link add dev $INTERFACE type dummy
 ExecStart=/sbin/ip addr add $IP_ADDR/24 dev $INTERFACE
 ExecStart=/sbin/ip link set $INTERFACE up
 RemainAfterExit=yes
@@ -589,8 +592,31 @@ RemainAfterExit=yes
 WantedBy=multi-user.target
 EOL
 
+
 echo "Сервис $INTERFACE.service создан и интерфейс $INTERFACE поднят с IP $IP_ADDR"
 
+
+
+
+#Создаем systemd unit для загрузки пользователей в xray после перезагрузки
+
+SERVICE_PATH="/etc/systemd/system/load-users-xray.service"
+
+cat <<EOL > "$SERVICE_PATH"
+[Unit]
+Description=Run antizapret client.py after xray
+After=xray.service
+Requires=xray.service
+
+[Service]
+Type=oneshot
+ExecStart=/root/antizapret/client.py 10
+
+[Install]
+WantedBy=xray.service
+EOL
+
+echo "Сервис $SERVICE_NAME создан и включен."
 
 #
 # Запрещаем несколько одновременных подключений к OpenVPN для одного клиента
@@ -629,6 +655,7 @@ systemctl enable openvpn-server@vpn-tcp
 systemctl enable wg-quick@antizapret
 systemctl enable wg-quick@vpn
 systemctl enable xray
+systemctl enable load-users-xray.service
 
 #Создаем дефолтного пользователя
 /root/antizapret/client.py 11 default-user 3650
